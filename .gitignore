@@ -1,0 +1,7 @@
+*.gem
+.bundle
+pkg/*
+vendor/
+*~
+#*
+dev.yml
