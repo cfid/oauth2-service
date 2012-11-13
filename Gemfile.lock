@@ -79,15 +79,6 @@ GIT
       warden-client (~> 0.0.6)
       warden-protocol (~> 0.0.5)
 
-PATH
-  remote: .
-  specs:
-    cf-oauth2-service (1.0.0)
-      cf-uaa-client
-      vcap_common
-      vcap_logging
-      vcap_services_base
-
 GEM
   remote: http://rubygems.org/
   specs:
@@ -214,9 +205,9 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  cf-oauth2-service!
   cf-uaa-client!
   eventmachine!
+  rake
   rspec
   vcap_common!
   vcap_logging!
