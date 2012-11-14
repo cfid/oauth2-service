@@ -76,12 +76,13 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
     async do
       client.delete(instance_id)
     end
-    blk.call(success())
     bindings = find_all_bindings(instance_id)
     @prov_svcs.delete(instance_id)
     bindings.each do |b|
       @prov_svcs.delete(b[:service_id])
     end
+
+    blk.call(success())
 
   rescue => e
     @logger.warn("Exception at unprovision_service #{e}")
@@ -107,6 +108,7 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
     config['data'] ||= {}
     config['data']['binding_options'] = binding_options
     credentials = svc[:credentials].dup
+    credentials["name"] = instance_id
     update_redirect_uri(credentials, config)
     res = {
       :service_id => service_id,

@@ -130,18 +130,16 @@ module CF::UAA::OAuth2Service
 
       end
 
-      it "should fail on non-existent client" do
+      it "should fail on non-existent service" do
         @provisioner.unprovision_service("foo") do |svc|
           svc["success"].should be_false
         end
       end
 
-      it "should remove existing client successfully" do
-
+      it "should remove existing service successfully" do
         @provisioner.unprovision_service(@instance_id) do |svc|
           svc["success"].should be_true
         end
-
       end
 
       it "should be able to bind" do
@@ -158,6 +156,17 @@ module CF::UAA::OAuth2Service
         @provisioner.unbind_instance(@instance_id, @handle_id, {}) do |svc|
           svc["success"].should be_true
         end
+        
+      end
+
+      it "should be able to remove bindings when unprovisioning" do
+        
+        @provisioner.bind_instance(@instance_id, {}) {}
+        @provisioner.unprovision_service(@instance_id) do |svc|
+          svc["success"].should be_true
+        end
+
+        @provisioner.find_all_bindings(@instance_id).should be_empty
         
       end
 
