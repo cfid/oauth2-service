@@ -44,6 +44,7 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
     name = UUIDTools::UUID.random_create.to_s
     plan = request.plan || "free"
     version = request.version
+    email = request.email
 
     prov_req = request.extract.dup
     prov_req[:plan] = plan
@@ -51,7 +52,7 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
     # use old credentials to provision a service if provided.
     prov_req[:credentials] = prov_handle["credentials"] if prov_handle
 
-    credentials = gen_credentials(name)
+    credentials = gen_credentials(name, email)
     svc = {
       :configuration => prov_req,
       :service_id => name,
@@ -168,14 +169,16 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
     retry
   end
 
-  def gen_credentials(name)
+  def gen_credentials(name, email)
     client_secret = UUIDTools::UUID.random_create.to_s
     async() do
       client.create(:client_id=>name, :client_secret=>client_secret,
                    :scope => ["cloud_controller.read", "cloud_controller.write", "openid"],
                    :authorized_grant_types => ["authorization_code", "refresh_token"],
                    :access_token_validity => 10*60,
-                   :refresh_token_validity => 7*24*60*60)
+                   :refresh_token_validity => 7*24*60*60,
+                   :service_description => service_description,
+                   :owner => email)
     end
     # TODO: add redirect uri
     credentials = {
