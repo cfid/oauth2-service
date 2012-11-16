@@ -44,19 +44,9 @@ GIT
       yajl-ruby (~> 0.8.3)
 
 GIT
-  remote: git://github.com/cloudfoundry/warden.git
-  revision: 21f9a32ab501a6485c9a4e7aff4f9b6f40e31e3c
-  ref: 21f9a32ab50
-  specs:
-    warden-client (0.0.6)
-      warden-protocol
-    warden-protocol (0.0.5)
-      beefcake
-
-GIT
-  remote: git://github.com/dsyer/vcap-services-base.git
-  revision: 8ac662cde534771230fd1661af0c908eaa781ad5
-  ref: debugging
+  remote: git://github.com/cloudfoundry/vcap-services-base.git
+  revision: c1a412ffe9854da6d5564d880a6354b37768a541
+  ref: c1a412ff
   specs:
     vcap_services_base (0.1.16)
       curb (~> 0.7.16)
@@ -78,6 +68,16 @@ GIT
       vcap_logging (>= 1.0.2)
       warden-client (~> 0.0.6)
       warden-protocol (~> 0.0.5)
+
+GIT
+  remote: git://github.com/cloudfoundry/warden.git
+  revision: 21f9a32ab501a6485c9a4e7aff4f9b6f40e31e3c
+  ref: 21f9a32ab50
+  specs:
+    warden-client (0.0.6)
+      warden-protocol
+    warden-protocol (0.0.5)
+      beefcake
 
 GEM
   remote: http://rubygems.org/
@@ -147,7 +147,7 @@ GEM
       systemu (~> 2.5.0)
     membrane (0.0.2)
     mime-types (1.19)
-    multi_json (1.3.6)
+    multi_json (1.3.7)
     multipart-post (1.1.5)
     nats (0.4.24)
       daemons (>= 1.1.5)

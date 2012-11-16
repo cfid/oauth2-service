@@ -28,16 +28,57 @@ module CF::UAA
     end
 
     def create(info)
-      if ClientReg::simulate_fail
-        ClientReg::simulate_fail = false
-        raise TargetError 
+      maybe_async do
+        if ClientReg::simulate_fail
+          ClientReg::simulate_fail = false
+          raise TargetError 
+        end
+        result = info.dup
+        result.delete(:client_secret)
+        result
       end
-      result = info.dup
-      result.delete(:client_secret)
-      result
+    end
+
+    def update(info)
+      maybe_async do
+        info
+      end
     end
 
     def delete(id)
+      maybe_async {}
+    end
+
+    def get(id)
+      maybe_async do
+        {
+          :client_id => id,
+          :redirect_uri => ['https://uaa.cloudfoundry.com/redirect/client'],
+          :owner=>'foo@bar.com'
+        }
+      end
+    end
+
+    def request(target, method, path=nil, body=nil, headers={})
+      maybe_async do
+        [200, '', {:location=>'https://uaa.cloudfoundry.com/redirect/client#access_token=TOKEN'}]
+      end
+    end
+
+    def json_get(target, path=nil, authorization=nil, headers={})
+      maybe_async do
+        [{:name=>"app", :uris=>['foo.api.vcap.me']}]
+      end
+    end
+
+    def maybe_async(&blk)
+      return blk.call() unless @async
+      fiber = Fiber.current
+      EM.next_tick do
+        result = yield blk.call()
+        fiber.resume result
+      end
+      Fiber.yield
     end
 
   end
@@ -50,9 +91,10 @@ module CF::UAA::OAuth2Service
 
     include SpecHelper
 
-    before :all do
+    before :each do
+      CF::UAA::ClientReg.simulate_fail = false
       EM.run do
-        @provisioner = Provisioner.new(:service=>service_config, :logger=>logger)
+        @provisioner = Provisioner.new({:service=>service_config,:logger=>logger,:additional_options=>{}})
         EM.stop
       end
     end
@@ -64,29 +106,28 @@ module CF::UAA::OAuth2Service
     end
 
     it "should generate credentials" do
-      credentials = @provisioner.gen_credentials("foo")
+      credentials = @provisioner.gen_credentials("foo", "foo@bar.com")
       credentials["client_id"].should == "foo"
     end
 
     it "should recover from failure" do
       CF::UAA::ClientReg.simulate_fail = true
-      credentials = @provisioner.gen_credentials("foo")
+      credentials = @provisioner.gen_credentials("foo", "foo@bar.com")
       credentials["client_id"].should == "foo"
     end
 
     context "when synchronous" do
 
-      before :all do
-        config = service_config.dup
-        config[:async] = false
+      before :each do
+        config = service_config.merge(:async => false)
         EM.run do
-          @provisioner = Provisioner.new(:service=>config, :logger=>logger)
+          @provisioner = Provisioner.new(:service=>config, :logger=>logger,:additional_options=>{})
           EM.stop
         end
       end
 
       it "should not require an existing fiber" do
-        credentials = @provisioner.gen_credentials("foo")
+        credentials = @provisioner.gen_credentials("foo", "foo@bar.com")
         credentials["client_id"].should == "foo"        
       end
 

@@ -21,6 +21,7 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
 
   DEFAULT_UAA_URL = "https://uaa.cloudfoundry.com"
   DEFAULT_LOGIN_URL = "https://login.cloudfoundry.com"
+  DEFAULT_CLOUD_CONTROLLER_URL = "https://api.cloudfoundry.com"
 
   def service_name
     "OAuth2"
@@ -30,11 +31,13 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
     super(options)
     @uaa_url = options[:service][:uaa] || DEFAULT_UAA_URL
     @login_url = options[:service][:login] || options[:service][:uaa] || DEFAULT_LOGIN_URL
+    @cloud_controller_uri = options[:additional_options][:cloud_controller_uri] || DEFAULT_CLOUD_CONTROLLER_URL
+    @redirect_protocol = @uaa_url.start_with?('https') ? 'https://' : 'http://'
     @client_id =  options[:service][:client_id] || "kernelauth"
     @client_secret =  options[:service][:client_secret] || "kernelauthsecret"
     @logger.debug("Initializing: #{options}")
     @logger.info("UAA: #{@uaa_url}, Login: #{@login_url}")
-    @async = options[:service][:async] || true    
+    @async = options[:service][:async].nil? ? true : options[:service][:async]
   end
 
   def provision_service(request, prov_handle=nil, &blk)
@@ -145,42 +148,110 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
   end
 
   def update_redirect_uri(credentials, config)
+
+    async do
+
+      @logger.debug("Updating redirect uris, credentials=#{credentials}, config=#{config}")
+
+      client_id = credentials["client_id"]
+      details = client.get(client_id)
+      if details.nil?
+        @logger.warn("No client details for: #{client_id}")
+        return
+      end
+
+      @logger.debug("Found client details: #{details}")
+      owner = config["email"] || details[:owner]
+      name = config["name"]
+
+      unless owner.nil?
+
+        @logger.debug("Fetching apps for user: #{owner}")
+
+        credentials = {source: "login",
+          client_id: "vmc",
+          redirect_uri: "https://uaa.cloudfoundry.com/redirect/vmc",
+          response_type: "token",
+          username: owner}
+        
+        request_headers = {
+          content_type: "application/x-www-form-urlencoded", 
+          accept: "application/json", 
+          authorization: @auth_header }
+      
+        status, body, headers = client.request(@uaa_url, :post, "/oauth/authorize", URI.encode_www_form(credentials), request_headers)
+        reply_uri = URI.parse(headers[:location])
+        params = CF::UAA::Util.decode_form_to_hash(reply_uri.fragment)
+
+        apps = client.json_get(@cloud_controller_uri, "/apps", "bearer #{params[:access_token]}", request_headers)
+        @logger.debug("Apps from cloud controller: #{apps}")
+
+        redirect_uri = ["https://uaa.cloudfoundry.com/redirect/#{client_id}"]
+        apps.each do |app|
+          next if app[:uris].nil? or app[:services].nil? or app[:services].empty?
+          next if name and !app[:services].include?(name)
+          app[:uris].each do |uri|
+            redirect_uri << "#{@redirect_protocol}#{uri}"
+          end
+        end
+        details[:redirect_uri] = redirect_uri
+        @logger.debug("Updating client details with redirects: #{redirect_uri}")
+        begin
+          client.update(details)
+        rescue CF::UAA::NotFound
+          @logger.debug("Not found (already deleted?)")
+        end
+
+      end
+
+    end 
+
   end
 
   def client
     return @client if @client
     token = CF::UAA::TokenIssuer.new(@uaa_url, @client_id, @client_secret).client_credentials_grant
     @logger.info("Client token: #{token}")
-    @client = CF::UAA::ClientReg.new(@uaa_url, token.auth_header)
+    @auth_header = token.auth_header
+    @client = CF::UAA::ClientReg.new(@uaa_url, @auth_header)
     @client.async = @async
     @client
   end
 
   def async(&blk)
-    if @async
-      Fiber.new {
+    attempts = 0
+    begin
+      if @async
+        Fiber.new {
+          blk.call()
+        }.resume
+      else
         blk.call()
-      }.resume
-    else
-      blk.call()
+      end
+    rescue => e
+      attempts = attempts + 1
+      if attempts < 2
+        @logger.info("Failed. Retrying.")
+        retry
+      else
+        @logger.info("Failed last attempt.")
+        raise e
+      end
     end
-  rescue
-    @logger.info("Failed. Retrying.")
-    retry
   end
 
-  def gen_credentials(name, email)
+  def gen_credentials(name, owner)
     client_secret = UUIDTools::UUID.random_create.to_s
-    async() do
+    async do
       client.create(:client_id=>name, :client_secret=>client_secret,
                    :scope => ["cloud_controller.read", "cloud_controller.write", "openid"],
                    :authorized_grant_types => ["authorization_code", "refresh_token"],
                    :access_token_validity => 10*60,
                    :refresh_token_validity => 7*24*60*60,
+                   :redirect_uri => "https://uaa.cloudfoundry.com/redirect/#{name}",
                    :service_description => service_description,
-                   :owner => email)
+                   :owner => owner)
     end
-    # TODO: add redirect uri
     credentials = {
       "auth_server_url" => "#{@login_url}",
       "token_server_url" => "#{@uaa_url}",

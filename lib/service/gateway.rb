@@ -14,4 +14,8 @@ class CF::UAA::OAuth2Service::Gateway < VCAP::Services::Base::Gateway
     File.join(config_base_dir, 'oauth2_gateway.yml')
   end
 
+  def additional_options
+    @config[:cloud_controller_uri] ? {:cloud_controller_uri => @config[:cloud_controller_uri]} : {}
+  end
+
 end
