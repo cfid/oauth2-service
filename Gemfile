@@ -8,7 +8,11 @@ gem 'warden-client', :require => ['warden/client'], :git => 'git://github.com/cl
 gem 'warden-protocol', :require => ['warden/protocol'], :git => 'git://github.com/cloudfoundry/warden.git', :ref => '21f9a32ab50'
 gem 'cf-uaa-client', :git => 'git://github.com/cloudfoundry/uaa.git', :ref => 'master'
 
-group :development do
+group :test do
   gem "rake"
   gem "rspec"
+  gem "rcov"
+  gem "simplecov"
+  gem "simplecov-rcov"
+  gem "ci_reporter"
 end
