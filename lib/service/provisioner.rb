@@ -19,9 +19,9 @@ end
 
 class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
 
-  DEFAULT_UAA_URL = "https://uaa.cloudfoundry.com"
-  DEFAULT_LOGIN_URL = "https://login.cloudfoundry.com"
-  DEFAULT_CLOUD_CONTROLLER_URL = "https://api.cloudfoundry.com"
+  DEFAULT_UAA_URL = "http://uaa.vcap.me"
+  DEFAULT_LOGIN_URL = "http://uaa.vcap.me"
+  DEFAULT_CLOUD_CONTROLLER_URL = "http://api.vcap.me"
 
   def service_name
     "OAuth2"
@@ -173,12 +173,12 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
           redirect_uri: "https://uaa.cloudfoundry.com/redirect/vmc",
           response_type: "token",
           username: owner}
-        
+
         request_headers = {
-          content_type: "application/x-www-form-urlencoded", 
-          accept: "application/json", 
+          content_type: "application/x-www-form-urlencoded",
+          accept: "application/json",
           authorization: @auth_header }
-      
+
         status, body, headers = client.request(@uaa_url, :post, "/oauth/authorize", URI.encode_www_form(credentials), request_headers)
         reply_uri = URI.parse(headers[:location])
         params = CF::UAA::Util.decode_form_to_hash(reply_uri.fragment)
@@ -204,7 +204,7 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
 
       end
 
-    end 
+    end
 
   end
 

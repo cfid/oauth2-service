@@ -31,7 +31,7 @@ module CF::UAA
       maybe_async do
         if ClientReg::simulate_fail
           ClientReg::simulate_fail = false
-          raise TargetError 
+          raise TargetError
         end
         result = info.dup
         result.delete(:client_secret)
@@ -128,7 +128,7 @@ module CF::UAA::OAuth2Service
 
       it "should not require an existing fiber" do
         credentials = @provisioner.gen_credentials("foo", "foo@bar.com")
-        credentials["client_id"].should == "foo"        
+        credentials["client_id"].should == "foo"
       end
 
     end
@@ -152,7 +152,7 @@ module CF::UAA::OAuth2Service
     context "when provisioned" do
 
       before :each do
-        
+
         request = VCAP::Services::Api::GatewayProvisionRequest.new(:label=>"test-1.0", :name=>"test", :plan=>"free", :email=>"vcap_tester@vmware.com", :version=>"1.0")
 
         @instance_id == nil
@@ -184,31 +184,31 @@ module CF::UAA::OAuth2Service
       end
 
       it "should be able to bind" do
-        
+
         @provisioner.bind_instance(@instance_id, {}) do |svc|
           svc["success"].should be_true
           svc["response"][:configuration][:email].should == "vcap_tester@vmware.com"
         end
-        
+
       end
 
       it "should be able to unbind" do
-        
+
         @provisioner.unbind_instance(@instance_id, @handle_id, {}) do |svc|
           svc["success"].should be_true
         end
-        
+
       end
 
       it "should be able to remove bindings when unprovisioning" do
-        
+
         @provisioner.bind_instance(@instance_id, {}) {}
         @provisioner.unprovision_service(@instance_id) do |svc|
           svc["success"].should be_true
         end
 
         @provisioner.find_all_bindings(@instance_id).should be_empty
-        
+
       end
 
     end

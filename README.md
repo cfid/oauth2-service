@@ -4,12 +4,12 @@ client registration is created in the UAA.  Then when you bind an
 application to it (`vmc bind-service`), the app gets some credentials
 in `VCAP_SERVICES` environment variable, e.g.
 
-    VCAP_SERVICES={"oauth2-1.0":[{"name":"oauth2", "label":"oauth2-1.0", 
+    VCAP_SERVICES={"oauth2-1.0":[{"name":"oauth2", "label":"oauth2-1.0",
       "plan":"free", "tags":["uaa", "oauth2-1.0", "oauth2"], "credentials":
       {"auth_server_url":"http://login.cloudfoundry.com", "token_server_url":"http://uaa.cloudfoundry.com", 
-      "client_id":"b1366591-5456-4221-8563-9f8370ead694", 
+      "client_id":"b1366591-5456-4221-8563-9f8370ead694",
       "client_secret":"af6c147d-5695-495a-bfdc-e7132c8b1dd2"}}]}
-  
+
 The application can use the "credentials" field to drive an
 authorization code flow and obtain an OAuth2 access token.  The
 default scope for a token is
@@ -32,7 +32,7 @@ and services in the cloud controller.
 ### Bind
 
     [2012-11-05 10:07:34.775173] gateway - pid=12579 tid=dc89 fid=23a0  DEBUG -- [Test-Provisioner] Attempting to bind to service b5df21d7-ccfd-4a8e-adbe-55a2c3172de9
-    [2012-11-05 10:07:34.775694] gateway - pid=12579 tid=dc89 fid=23a0  DEBUG -- [Test-Provisioner] Binded: {:service_id=>"d5e8754d-b1dc-4562-9fce-eb7747460b89", :configuration=>{"plan"=>"free", "version"=>"1.0", "data"=>{"binding_options"=>{}}}, :credentials=>{"internal"=>{"name"=>"b5df21d7-ccfd-4a8e-adbe-55a2c3172de9"}}}
+    [2012-11-05 10:07:34.775694] gateway - pid=12579 tid=dc89 fid=23a0  DEBUG -- [Test-Provisioner] Bound: {:service_id=>"d5e8754d-b1dc-4562-9fce-eb7747460b89", :configuration=>{"plan"=>"free", "version"=>"1.0", "data"=>{"binding_options"=>{}}}, :credentials=>{"internal"=>{"name"=>"b5df21d7-ccfd-4a8e-adbe-55a2c3172de9"}}}
     [2012-11-05 10:07:34.775903] gateway - pid=12579 tid=dc89 fid=23a0  DEBUG -- Reply status:200, headers:{"Content-Type"=>"application/json"}, body:{"service_id":"d5e8754d-b1dc-4562-9fce-eb7747460b89","configuration":{"plan":"free","version":"1.0","data":{"binding_options":{}}},"credentials":{"internal":{"name":"b5df21d7-ccfd-4a8e-adbe-55a2c3172de9"}}}
 
 ### Unbind
@@ -52,7 +52,7 @@ values for your environment). Then you can try and launch with, for
 instance
 
     $ bin/gateway -c config/dev.yml
-    
+
 Note that the services base code will require `/var/vcap/sys/run/LOCK`
 to be writable.  This is fixed in the `dsyer` fork so that the lock
 file location can be overridden with an environment variable:
@@ -64,7 +64,7 @@ file location can be overridden with an environment variable:
 NATS registration happens before contacting the Cloud Controller so if
 you have problems connecting you are hosed, but you can disable it by
 *not* providing an `mbus` entry in the local config.
- 
+
 ### Make the Cloud Controller aware of our offering
 
 The cloud controller has to be expecting us as well, so you need this
@@ -73,16 +73,12 @@ subsequently):
 
     builtin_services:
      test: 0xdeadbeef
-      
+
 In a BOSH deployment you can do this by adding a snippet to the
 manifest and then doing a `bosh deploy`:
 
     external_service_tokens:
       test: 0xdeadbeef
-
-(Except there's a bug in the `cloud_controller` job where the template
-doesn't expand the external service tokens into a hash before
-iterating on them.)
 
 ### Make sure the gateway is not registered as "core"
 
@@ -92,8 +88,8 @@ in the gateway config file.
 
 ### Port Numbers
 
-The Cloud Controller database doesn't seem to get updated with the new
-port if you change the gateweay, and the default is to pick an
-ephemeral port.  So it's best to fix the port in the gateway YML
-config.
+If you are testing a gateway without NATS registration, the Cloud
+Controller database doesn't seem to get updated with the new port when
+you change the gateweay, and the default is to pick an ephemeral port.
+So it's best to fix the port in the gateway YML config for testing.
 
