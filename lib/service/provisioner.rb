@@ -22,7 +22,6 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
   DEFAULT_UAA_URL = "http://uaa.vcap.me"
   DEFAULT_LOGIN_URL = "http://uaa.vcap.me"
   DEFAULT_CLOUD_CONTROLLER_URL = "http://api.vcap.me"
-  DEFAULT_VMC_REDIRECT = "https://uaa.cloudfoundry.com/redirect/vmc"
 
   def service_name
     "OAuth2"
@@ -34,8 +33,9 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
     @login_url = options[:service][:login] || options[:service][:uaa] || DEFAULT_LOGIN_URL
     @cloud_controller_uri = options[:additional_options][:cloud_controller_uri] || DEFAULT_CLOUD_CONTROLLER_URL
     @redirect_protocol = @uaa_url.start_with?('https') ? 'https://' : 'http://'
-    @client_id =  options[:service][:client_id] || "kernelauth"
-    @client_secret =  options[:service][:client_secret] || "kernelauthsecret"
+    @client_id =  options[:service][:client_id] || "oauth2service"
+    @client_secret =  options[:service][:client_secret] || "oauth2servicesecret"
+    @redirect_uri =  options[:service][:redirect_uri] || "#{@uaa_url}/redirect/#{@client_id}"
     @logger.debug("Initializing: #{options}")
     @logger.info("UAA: #{@uaa_url}, Login: #{@login_url}")
     @async = options[:service][:async].nil? ? true : options[:service][:async]
@@ -160,11 +160,6 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
         @logger.warn("No client details for: #{client_id}")
         return
       end
-      vmc = client.get("vmc")
-      if vmc.nil?
-        @logger.error("No client details for: vmc")
-        return
-      end
 
       @logger.debug("Found client details: #{details}")
       owner = config["email"] || details[:owner]
@@ -174,10 +169,9 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
 
         @logger.debug("Fetching apps for user: #{owner}")
 
-        vmc_redirect = vmc.redirect_uri ? vmc.redirect_uri[0] : DEFAULT_VMC_REDIRECT
         credentials = {source: "login",
-          client_id: "vmc",
-          redirect_uri: vmc_redirect,
+          client_id: @client_id,
+          redirect_uri: @redirect_uri,
           response_type: "token",
           username: owner}
 
