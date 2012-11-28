@@ -22,6 +22,7 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
   DEFAULT_UAA_URL = "http://uaa.vcap.me"
   DEFAULT_LOGIN_URL = "http://uaa.vcap.me"
   DEFAULT_CLOUD_CONTROLLER_URL = "http://api.vcap.me"
+  DEFAULT_VMC_REDIRECT = "https://uaa.cloudfoundry.com/redirect/vmc"
 
   def service_name
     "OAuth2"
@@ -159,6 +160,11 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
         @logger.warn("No client details for: #{client_id}")
         return
       end
+      vmc = client.get("vmc")
+      if vmc.nil?
+        @logger.error("No client details for: vmc")
+        return
+      end
 
       @logger.debug("Found client details: #{details}")
       owner = config["email"] || details[:owner]
@@ -168,9 +174,10 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
 
         @logger.debug("Fetching apps for user: #{owner}")
 
+        vmc_redirect = vmc.redirect_uri ? vmc.redirect_uri[0] : DEFAULT_VMC_REDIRECT
         credentials = {source: "login",
           client_id: "vmc",
-          redirect_uri: "https://uaa.cloudfoundry.com/redirect/vmc",
+          redirect_uri: vmc_redirect,
           response_type: "token",
           username: owner}
 
@@ -186,7 +193,7 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
         apps = client.json_get(@cloud_controller_uri, "/apps", "bearer #{params[:access_token]}", request_headers)
         @logger.debug("Apps from cloud controller: #{apps}")
 
-        redirect_uri = ["https://uaa.cloudfoundry.com/redirect/#{client_id}"]
+        redirect_uri = ["#{@uaa_url}/redirect/#{client_id}"]
         apps.each do |app|
           next if app[:uris].nil? or app[:services].nil? or app[:services].empty?
           next if name and !app[:services].include?(name)
@@ -248,7 +255,7 @@ class CF::UAA::OAuth2Service::Provisioner < VCAP::Services::Base::Provisioner
                    :authorized_grant_types => ["authorization_code", "refresh_token"],
                    :access_token_validity => 10*60,
                    :refresh_token_validity => 7*24*60*60,
-                   :redirect_uri => "https://uaa.cloudfoundry.com/redirect/#{name}",
+                    :redirect_uri => "#{@uaa_url}/redirect/#{name}",
                    :service_description => service_description,
                    :owner => owner)
     end
